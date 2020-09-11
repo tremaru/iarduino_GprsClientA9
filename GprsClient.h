@@ -12,6 +12,11 @@
 constexpr char* START = "AT+CIPSTART=";
 constexpr char* PASS_THRU_MODE = "AT+CIPTMODE=1";
 
+class Glue: public Stream {
+	public:
+		virtual void begin(long speed);
+};
+
 #define GPRS_TIMEOUT 4000
 #define SER_TIMEOUT 4000
 
@@ -41,7 +46,8 @@ class GprsClient: public Client {
 
 	private:
 		String _protocol = "TCP";
-		const Stream& _serial;
+		//const Stream& _serial;
+		const Glue& _serial;
 		bool waitResp(unsigned long time, const String& aresp, const Stream& stream)
 		{
 			unsigned long timer = millis();
@@ -83,9 +89,6 @@ class GprsClient: public Client {
 			else
 				return true;
 		}
-
-
-
 };
 
 #endif
