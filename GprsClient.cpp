@@ -1,8 +1,5 @@
 #include "GprsClient.h"
 
-
-//GprsClient::_serial = &HardwareSerial;
-
 bool GprsClient::begin()
 {
 	//_serial.begin(115200);

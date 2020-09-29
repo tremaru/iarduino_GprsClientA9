@@ -14,7 +14,11 @@ constexpr char* PASS_THRU_MODE = "AT+CIPTMODE=1";
 
 class Glue: public Stream {
 	public:
-		virtual void begin(long speed);
+		Glue(const HardwareSerial& serial){ glue_serial = &serial;};
+		Glue(const SoftwareSerial& serial){ glue_serial = &serial;};
+
+		//virtual void begin(long speed);
+		void* glue_serial;
 };
 
 #define GPRS_TIMEOUT 4000
@@ -23,8 +27,18 @@ class Glue: public Stream {
 class GprsClient: public Client {
 	//friend Stream;
 	public:
-		GprsClient(const HardwareSerial& serial): _serial(serial) {_timeout = GPRS_TIMEOUT;};
-		GprsClient(const SoftwareSerial& serial): _serial(serial) {_timeout = GPRS_TIMEOUT;};
+		//GprsClient(const HardwareSerial& serial): _serial(serial) {_timeout = GPRS_TIMEOUT;};
+		//GprsClient(const SoftwareSerial& serial): _serial(serial) {_timeout = GPRS_TIMEOUT;};
+		GprsClient(const HardwareSerial& serial){
+			Glue mySerial(serial);
+			_serial = *mySerial;
+			_timeout = GPRS_TIMEOUT;
+		};
+		GprsClient(const SoftwareSerial& serial){
+			Glue mySerial(serial);
+			_serial = *mySerial;
+			_timeout = GPRS_TIMEOUT;
+		};
 		int connect(const char* host, uint16_t port);
 		int connect(IPAddress ip, uint16_t port);
 		int connect(const char* host, uint16_t port, const char* protocol);
