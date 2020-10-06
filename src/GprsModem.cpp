@@ -62,7 +62,7 @@ uint32_t GprsModem::_checkRate(const bool& flag)
 				_serial.println("AT");
 				delay(10);
 				if (GprsClient::waitResp(2000UL, "OK", _serial))
-						return rate;
+					return rate;
 			}
 			else {
 				_s_serial.println("AT");

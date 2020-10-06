@@ -1,0 +1,2 @@
+	GprsModem	KEYWORD1
+	GprsClient	KEYWORD1

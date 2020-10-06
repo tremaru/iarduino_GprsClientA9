@@ -9,11 +9,14 @@
 #include <SoftwareSerial.h>
 
 #include "IPAddress.h"
+
 // TODO: force client to work on ip addresses, not domain names. This
 // should improve speed even more.
 //#include "Dns.h"
 
+// start ip AT prefix
 constexpr char* START = "AT+CIPSTART=";
+
 // Pass through mode. Pretty hard to implement Client class
 // with this. You expected to pass 0x1A at the end, which
 // is hard to predict when implementing print() funcs through
@@ -21,18 +24,18 @@ constexpr char* START = "AT+CIPSTART=";
 //constexpr char* PASS_THRU_MODE = "AT+CIPTMODE=1";
 
 // A9 modem is ridiculously slow.
-#define GPRS_TIMEOUT 4000
-#define SER_TIMEOUT 4000
+constexpr unsigned long GPRS_TIMEOUT = 4000;
+constexpr unsigned long SER_TIMEOUT = 4000;
 
 // modem class, for initialization.
 class GprsModem {
 	public:
 		GprsModem(const HardwareSerial& serial):
 			_serial(serial),
-			_native_serial(true) {;}
+			_native_serial(true) {}
 		GprsModem(const SoftwareSerial& serial):
 			_s_serial(serial),
-			_native_serial(false) {;}
+			_native_serial(false) {}
 		bool begin();
 	private:
 		uint32_t _checkRate(const bool&);
@@ -49,8 +52,8 @@ class GprsModem {
 class GprsClient: public Client {
 	friend class GprsModem;
 	public:
-		GprsClient(const HardwareSerial& serial): _serial(serial) {_timeout = GPRS_TIMEOUT;};
-		GprsClient(const SoftwareSerial& serial): _serial(serial) {_timeout = GPRS_TIMEOUT;};
+		GprsClient(const HardwareSerial& serial): _serial(serial) {_timeout = GPRS_TIMEOUT;}
+		GprsClient(const SoftwareSerial& serial): _serial(serial) {_timeout = GPRS_TIMEOUT;}
 		int connect(const char* host, uint16_t port);
 		int connect(IPAddress ip, uint16_t port);
 		int connect(const char* host, uint16_t port, const char* protocol);
