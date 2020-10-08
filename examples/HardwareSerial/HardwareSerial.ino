@@ -1,14 +1,11 @@
 #include <GprsModem.h>
-#include <SoftwareSerial.h>
-
-#define RX 7
-#define TX 8
+#define mySerial Serial
+//#define mySerial Serial1
 
 constexpr char host[] = "www.google.com";
 constexpr char req[] = "GET /search?q=iarduino HTTP/1.1";
 constexpr int port = 80;
 
-SoftwareSerial mySerial(RX, TX);
 GprsModem myModem(mySerial);
 GprsClient myClient(mySerial);
 
@@ -26,7 +23,7 @@ void setup()
 	myClient.begin();
 
 	if (!myClient.connect(host, port)) {
-		Serial.println("Не удалось подключиться к удалённому узлу");
+		Serial.println("Не удалось подключится к удалённому узлу");
 		while(1);
 	}
 
