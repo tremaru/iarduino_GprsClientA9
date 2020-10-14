@@ -36,6 +36,16 @@ bool GprsModem::_begin(const bool& flag)
 	return true;
 }
 
+// Cold reboot thru power pin
+void GprsModem::coldReboot(uint8_t pinPWR)
+{
+	pinMode(pinPWR, OUTPUT);
+	digitalWrite(pinPWR, HIGH);
+	delay(2000);
+	digitalWrite(pinPWR, LOW);
+	delay(2000);
+}
+
 /*
  * Checking for current baud rate. Based on TinyGSM code
  * by Volodymyr Shymanskyy. Thank you, dude.

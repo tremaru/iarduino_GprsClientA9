@@ -37,6 +37,7 @@ class GprsModem {
 			_s_serial(serial),
 			_native_serial(false) {}
 		bool begin();
+		void coldReboot(uint8_t pinPWR);
 	private:
 		uint32_t _checkRate(const bool&);
 		bool _native_serial;
