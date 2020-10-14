@@ -2,30 +2,34 @@
 
 //#define H_CAST (*(HardwareSerial*)_serial)
 //#define S_CAST (*(SoftwareSerial*)_serial)
-#define H_SPEED 115200
-#define S_SPEED 9600
+
+constexpr unsigned long H_SPEED = 115200;
+constexpr unsigned long S_SPEED = 9600;
+
+/*
+bool GprsModem::begin()
+{
+	return _begin();
+}
+*/
 
 bool GprsModem::begin()
 {
-	return _begin(_native_serial);
-}
 
-bool GprsModem::_begin(const bool& flag)
-{
-	uint32_t rate = _checkRate(flag);
+	uint32_t rate = _checkRate();
 
 
 	if (rate == -1)
 		return false;
 	else {
-		if (flag && (rate != H_SPEED)) {
+		if (_serial && (rate != H_SPEED)) {
 			_serial->println((String)"ATZ+IPR=" + H_SPEED);
 			GprsClient::waitResp(2000UL, "OK", *_serial);
 			_serial->end();
 			delay(100);
 			_serial->begin(H_SPEED);
 		}
-		else if (!flag && (rate != S_SPEED)) {
+		else if (_s_serial && (rate != S_SPEED)) {
 			_s_serial->println((String)"ATZ+IPR=" + S_SPEED);
 			GprsClient::waitResp(2000UL, "OK", *_s_serial);
 			_s_serial->end();
@@ -47,18 +51,11 @@ void GprsModem::coldReboot(uint8_t pinPWR)
 }
 
 /*
-uint32_t GprsModem::_checkRate(const bool& flag)
-{
-	return 9600UL;
-}
-*/
-
-/*
  * Checking for current baud rate. Based on TinyGSM code
  * by Volodymyr Shymanskyy. Thank you, dude.
  */
 
-uint32_t GprsModem::_checkRate(const bool& flag)
+uint32_t GprsModem::_checkRate()
 {
 	static uint32_t rates[] = {
 		115200, 9600, 57600, 38400, 19200, 74400, 74880,
@@ -67,7 +64,7 @@ uint32_t GprsModem::_checkRate(const bool& flag)
 
 	for (uint8_t i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
 		uint32_t rate = rates[i];
-		if (flag)
+		if (_serial)
 			_serial->begin(rate);
 		else
 			_s_serial->begin(rate);
@@ -76,7 +73,7 @@ uint32_t GprsModem::_checkRate(const bool& flag)
 
 		for (uint8_t j = 0; j < 5; j++) {
 
-			if (flag) {
+			if (_serial) {
 				_serial->println("AT");
 				delay(10);
 				if (GprsClient::waitResp(2000UL, "OK", *_serial))

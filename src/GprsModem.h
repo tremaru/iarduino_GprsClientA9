@@ -32,18 +32,14 @@ class GprsModem {
 	public:
 		GprsModem(const HardwareSerial& serial):
 			_serial(&serial),
-			_s_serial(nullptr),
-			_native_serial(true) {}
+			_s_serial(nullptr) {}
 		GprsModem(const SoftwareSerial& serial):
 			_serial(nullptr),
-			_s_serial(&serial),
-			_native_serial(false) {}
+			_s_serial(&serial) {}
 		bool begin();
 		void coldReboot(uint8_t pinPWR);
 	private:
-		uint32_t _checkRate(const bool&);
-		bool _native_serial;
-		bool _begin(const bool&);
+		uint32_t _checkRate();
 
 		// had to create two fields and this whole class because
 		// begin() funcs are absent in the Stream class.
