@@ -14,7 +14,7 @@
 // should improve speed even more.
 //#include "Dns.h"
 
-// start ip AT prefix
+// AT prefix to start ip
 constexpr char* START = "AT+CIPSTART=";
 
 // Pass through mode. Pretty hard to implement Client class
@@ -31,10 +31,12 @@ constexpr unsigned long SER_TIMEOUT = 4000;
 class GprsModem {
 	public:
 		GprsModem(const HardwareSerial& serial):
-			_serial(serial),
+			_serial(&serial),
+			_s_serial(nullptr),
 			_native_serial(true) {}
 		GprsModem(const SoftwareSerial& serial):
-			_s_serial(serial),
+			_serial(nullptr),
+			_s_serial(&serial),
 			_native_serial(false) {}
 		bool begin();
 		void coldReboot(uint8_t pinPWR);
@@ -45,8 +47,8 @@ class GprsModem {
 
 		// had to create two fields and this whole class because
 		// begin() funcs are absent in the Stream class.
-		const HardwareSerial& _serial;
-		const SoftwareSerial& _s_serial;
+		const HardwareSerial* _serial;
+		const SoftwareSerial* _s_serial;
 };
 
 // client class.

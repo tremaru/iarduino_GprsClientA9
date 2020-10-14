@@ -19,18 +19,18 @@ bool GprsModem::_begin(const bool& flag)
 		return false;
 	else {
 		if (flag && (rate != H_SPEED)) {
-			_serial.println((String)"ATZ+IPR=" + H_SPEED);
-			GprsClient::waitResp(2000UL, "OK", _serial);
-			_serial.end();
+			_serial->println((String)"ATZ+IPR=" + H_SPEED);
+			GprsClient::waitResp(2000UL, "OK", *_serial);
+			_serial->end();
 			delay(100);
-			_serial.begin(H_SPEED);
+			_serial->begin(H_SPEED);
 		}
 		else if (!flag && (rate != S_SPEED)) {
-			_s_serial.println((String)"ATZ+IPR=" + S_SPEED);
-			GprsClient::waitResp(2000UL, "OK", _s_serial);
-			_s_serial.end();
+			_s_serial->println((String)"ATZ+IPR=" + S_SPEED);
+			GprsClient::waitResp(2000UL, "OK", *_s_serial);
+			_s_serial->end();
 			delay(100);
-			_s_serial.begin(S_SPEED);
+			_s_serial->begin(S_SPEED);
 		}
 	}
 	return true;
@@ -47,9 +47,17 @@ void GprsModem::coldReboot(uint8_t pinPWR)
 }
 
 /*
+uint32_t GprsModem::_checkRate(const bool& flag)
+{
+	return 9600UL;
+}
+*/
+
+/*
  * Checking for current baud rate. Based on TinyGSM code
  * by Volodymyr Shymanskyy. Thank you, dude.
  */
+
 uint32_t GprsModem::_checkRate(const bool& flag)
 {
 	static uint32_t rates[] = {
@@ -60,24 +68,24 @@ uint32_t GprsModem::_checkRate(const bool& flag)
 	for (uint8_t i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
 		uint32_t rate = rates[i];
 		if (flag)
-			_serial.begin(rate);
+			_serial->begin(rate);
 		else
-			_s_serial.begin(rate);
+			_s_serial->begin(rate);
 
 		delay(10);
 
 		for (uint8_t j = 0; j < 5; j++) {
 
 			if (flag) {
-				_serial.println("AT");
+				_serial->println("AT");
 				delay(10);
-				if (GprsClient::waitResp(2000UL, "OK", _serial))
+				if (GprsClient::waitResp(2000UL, "OK", *_serial))
 					return rate;
 			}
 			else {
-				_s_serial.println("AT");
+				_s_serial->println("AT");
 				delay(10);
-				if (GprsClient::waitResp(2000UL, "OK", _s_serial)) {
+				if (GprsClient::waitResp(2000UL, "OK", *_s_serial)) {
 					return rate;
 				}
 			}
