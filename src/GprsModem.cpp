@@ -1,8 +1,5 @@
 #include "GprsModem.h"
 
-<<<<<<< HEAD:GprsClient.cpp
-bool GprsClient::begin()
-=======
 //#define H_CAST (*(HardwareSerial*)_serial)
 //#define S_CAST (*(SoftwareSerial*)_serial)
 #define H_SPEED 115200
@@ -41,7 +38,6 @@ bool GprsModem::_begin(const bool& flag)
 
 // Cold reboot thru power pin
 void GprsModem::coldReboot(uint8_t pinPWR)
->>>>>>> master:src/GprsModem.cpp
 {
 	pinMode(pinPWR, OUTPUT);
 	digitalWrite(pinPWR, HIGH);
