@@ -26,6 +26,7 @@ constexpr char* START = "AT+CIPSTART=";
 // A9 modem is ridiculously slow.
 constexpr unsigned long GPRS_TIMEOUT = 4000;
 constexpr unsigned long SER_TIMEOUT = 4000;
+constexpr uint8_t DEFAULT_PIN_PWR = 9;
 
 // modem class, for initialization.
 class GprsModem {
@@ -37,7 +38,8 @@ class GprsModem {
 			_serial(nullptr),
 			_s_serial(&serial) {}
 		bool begin();
-		void coldReboot(uint8_t pinPWR);
+		void coldReboot(uint8_t pinPWR = DEFAULT_PIN_PWR);
+		uint8_t getSignalLevel();
 	private:
 		uint32_t _checkRate();
 
@@ -101,6 +103,27 @@ class GprsClient: public Client {
 			else
 				return true;
 		}
+
+		static bool waitResp(unsigned long time, const String& aresp, String& buf, const Stream& stream)
+		{
+			unsigned long timer = millis();
+
+			buf = "";
+
+			while (millis() - timer < time) {
+				if (stream.available()) {
+					timer = millis();
+					char c = stream.read();
+					buf += String(c);
+				}
+			}
+
+			if (aresp != nullptr)
+				return buf.indexOf((String)aresp) > -1 ? true : false;
+			else
+				return true;
+		}
+
 };
 
 #endif

@@ -5,13 +5,16 @@
 
 constexpr unsigned long H_SPEED = 115200;
 constexpr unsigned long S_SPEED = 9600;
-
-/*
-bool GprsModem::begin()
-{
-	return _begin();
-}
-*/
+constexpr char* GPRS_IPR = "ATZ+IPR=";
+constexpr char* GPRS_AT = "AT";
+constexpr char* GPRS_OK = "OK";
+constexpr char* GPRS_SIGNAL = "AT+CSQ";
+constexpr char* GPRS_SIGNAL_RESP = "+CSQ:";
+constexpr unsigned long GPRS_WAIT = 2000;
+constexpr unsigned long REBOOT_DLY = 2000;
+constexpr unsigned long INIT_DLY = 100;
+constexpr unsigned long CH_RATE_DLY = 10;
+constexpr uint8_t NUM_TRIES = 5;
 
 bool GprsModem::begin()
 {
@@ -23,31 +26,21 @@ bool GprsModem::begin()
 		return false;
 	else {
 		if (_serial && (rate != H_SPEED)) {
-			_serial->println((String)"ATZ+IPR=" + H_SPEED);
-			GprsClient::waitResp(2000UL, "OK", *_serial);
+			_serial->println((String)GPRS_IPR + H_SPEED);
+			GprsClient::waitResp(GPRS_WAIT, GPRS_OK, *_serial);
 			_serial->end();
-			delay(100);
+			delay(INIT_DLY);
 			_serial->begin(H_SPEED);
 		}
 		else if (_s_serial && (rate != S_SPEED)) {
-			_s_serial->println((String)"ATZ+IPR=" + S_SPEED);
-			GprsClient::waitResp(2000UL, "OK", *_s_serial);
+			_s_serial->println((String)GPRS_IPR + S_SPEED);
+			GprsClient::waitResp(GPRS_WAIT, GPRS_OK, *_s_serial);
 			_s_serial->end();
-			delay(100);
+			delay(INIT_DLY);
 			_s_serial->begin(S_SPEED);
 		}
 	}
 	return true;
-}
-
-// Cold reboot thru power pin
-void GprsModem::coldReboot(uint8_t pinPWR)
-{
-	pinMode(pinPWR, OUTPUT);
-	digitalWrite(pinPWR, HIGH);
-	delay(2000);
-	digitalWrite(pinPWR, LOW);
-	delay(2000);
 }
 
 /*
@@ -57,6 +50,7 @@ void GprsModem::coldReboot(uint8_t pinPWR)
 
 uint32_t GprsModem::_checkRate()
 {
+	coldReboot();
 	static uint32_t rates[] = {
 		115200, 9600, 57600, 38400, 19200, 74400, 74880,
 		230400, 460800, 2400, 4800, 14400, 28800
@@ -69,20 +63,20 @@ uint32_t GprsModem::_checkRate()
 		else
 			_s_serial->begin(rate);
 
-		delay(10);
+		delay(CH_RATE_DLY);
 
-		for (uint8_t j = 0; j < 5; j++) {
+		for (uint8_t j = 0; j < NUM_TRIES; j++) {
 
 			if (_serial) {
-				_serial->println("AT");
-				delay(10);
-				if (GprsClient::waitResp(2000UL, "OK", *_serial))
+				_serial->println(GPRS_AT);
+				delay(CH_RATE_DLY);
+				if (GprsClient::waitResp(GPRS_WAIT, GPRS_OK, *_serial))
 					return rate;
 			}
 			else {
-				_s_serial->println("AT");
-				delay(10);
-				if (GprsClient::waitResp(2000UL, "OK", *_s_serial)) {
+				_s_serial->println(GPRS_AT);
+				delay(CH_RATE_DLY);
+				if (GprsClient::waitResp(GPRS_WAIT, GPRS_OK, *_s_serial)) {
 					return rate;
 				}
 			}
@@ -90,6 +84,60 @@ uint32_t GprsModem::_checkRate()
 	}
 	return -1;
 }
+
+// Cold reboot thru power pin
+void GprsModem::coldReboot(uint8_t pinPWR)
+{
+	pinMode(pinPWR, OUTPUT);
+	digitalWrite(pinPWR, HIGH);
+	delay(REBOOT_DLY);
+	digitalWrite(pinPWR, LOW);
+	delay(REBOOT_DLY);
+}
+
+
+uint8_t GprsModem::getSignalLevel()
+{
+	String resp = "";
+	if (_serial) {
+		_serial->println(GPRS_SIGNAL);
+		delay(10);
+		if (GprsClient::waitResp(
+					GPRS_WAIT,
+					GPRS_SIGNAL_RESP,
+					resp,
+					*_serial
+					)
+				) {
+			int index = resp.indexOf(':');
+			index++;
+			resp = resp.substring(index, index + 3);
+			resp.trim();
+			return (uint8_t) resp.toInt();
+		}
+
+	}
+	else {
+		_s_serial->println(GPRS_SIGNAL);
+		delay(10);
+		if (GprsClient::waitResp(
+					GPRS_WAIT,
+					GPRS_SIGNAL_RESP,
+					resp,
+					*_s_serial
+					)
+				) {
+			int index = resp.indexOf(':');
+			index++;
+			resp = resp.substring(index, index + 3);
+			resp.trim();
+			return (uint8_t) resp.toInt();
+		}
+
+	}
+}
+
+/****************************** MODEM ENDS HERE ******************************/
 
 bool GprsClient::begin()
 {
