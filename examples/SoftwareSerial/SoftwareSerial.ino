@@ -1,15 +1,12 @@
-// Скетч-пример работы с модулем при помощи аппаратного последовательного порта
+// Скетч-пример работы с модулем при помощи программного последовательного порта
 
-// Подключаем библиотеку модуля A9 для работы с сетью Интернет
+// Подключаем бибилиотеки
 #include <GprsModem.h>
+#include <SoftwareSerial.h>
 
-// Если модуль подключён к Piranha UNO
-#define mySerial Serial
-
-// Если модуль подлючён к Piranha ULTRA или Arduino MEGA
-// Раскомментируйте эту строку и закомментируйте или удалите
-// предыдущую. Переключите Shield на работу с выводами 7 и 8.
-//#define mySerial Serial1
+// Определяем выводы RX, TX
+#define RX 7
+#define TX 8
 
 // Данные для получения информации от удалённого узла
 char host[] = "www.google.com";
@@ -17,6 +14,7 @@ char req[] = "GET /search?q=iarduino HTTP/1.1";
 int port = 80;
 
 // Создаём объекты библиотек
+SoftwareSerial mySerial(RX, TX);
 GprsModem myModem(mySerial);
 GprsClient myClient(mySerial);
 
@@ -39,7 +37,7 @@ void setup()
 	// Подключаемся к серверу
 	Serial.println("Ждём подключения к удалённому узлу");
 	if (!myClient.connect(host, port)) {
-		Serial.println("Не удалось подключится к удалённому узлу");
+		Serial.println("Не удалось подключиться к удалённому узлу");
 		while(1);
 	}
 

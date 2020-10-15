@@ -1,2 +1,3 @@
 	GprsModem	KEYWORD1
 	GprsClient	KEYWORD1
+	getSignalLevel	KEYWORD1

@@ -1,7 +1,17 @@
+// tabstop=8
 #include "GprsModem.h"
 
 //#define H_CAST (*(HardwareSerial*)_serial)
 //#define S_CAST (*(SoftwareSerial*)_serial)
+
+// AT prefix to start ip
+constexpr char* START = "AT+CIPSTART=";
+
+// Pass through mode. Pretty hard to implement Client class
+// with this. You expected to pass 0x1A at the end, which
+// is hard to predict when implementing print() funcs through
+// write() funcs.
+//constexpr char* PASS_THRU_MODE = "AT+CIPTMODE=1";
 
 constexpr unsigned long H_SPEED = 115200;
 constexpr unsigned long S_SPEED = 9600;
@@ -14,27 +24,80 @@ constexpr unsigned long GPRS_WAIT = 2000;
 constexpr unsigned long REBOOT_DLY = 2000;
 constexpr unsigned long INIT_DLY = 100;
 constexpr unsigned long CH_RATE_DLY = 10;
-constexpr uint8_t NUM_TRIES = 5;
+constexpr uint8_t NUM_TRIES = 2;
 
+/****************************** UTILITY FUNCS ******************************/
+
+// Function for waiting a response from the module
+static bool waitResp(unsigned long time, const String& aresp, String& buf, const Stream& stream)
+{
+	unsigned long timer = millis();
+
+	buf = "";
+
+	while (millis() - timer < time) {
+		if (stream.available()) {
+			timer = millis();
+			char c = stream.read();
+			buf += String(c);
+		}
+	}
+
+	if (aresp.length()) {
+		return (buf.indexOf(aresp) > -1) ? true : false;
+	}
+	else
+		return true;
+}
+
+// Same as before, overloaded
+static bool waitResp(unsigned long time, const String& aresp, const Stream& stream)
+{
+	unsigned long timer = millis();
+
+	String buf = "";
+
+	while (millis() - timer < time) {
+		if (stream.available()) {
+			timer = millis();
+			char c = stream.read();
+			buf += String(c);
+		}
+	}
+
+	if (aresp.length()) {
+		return (buf.indexOf(aresp) > -1) ? true : false;
+	}
+	else
+		return true;
+}
+
+/****************************** MODEM STARTS HERE ******************************/
+
+// Modem module init.
 bool GprsModem::begin()
 {
 
+	// Checking rate
 	uint32_t rate = _checkRate();
 
-
+	// if checking rate was unsuccessful
 	if (rate == -1)
+		// No point to do anything else
 		return false;
 	else {
+		// Changing BAUD if necessary for HardwareSerial
 		if (_serial && (rate != H_SPEED)) {
 			_serial->println((String)GPRS_IPR + H_SPEED);
-			GprsClient::waitResp(GPRS_WAIT, GPRS_OK, *_serial);
+			waitResp(GPRS_WAIT, GPRS_OK, *_serial);
 			_serial->end();
 			delay(INIT_DLY);
 			_serial->begin(H_SPEED);
 		}
+		// Changing BAUD if necessary for SoftwareSerial
 		else if (_s_serial && (rate != S_SPEED)) {
 			_s_serial->println((String)GPRS_IPR + S_SPEED);
-			GprsClient::waitResp(GPRS_WAIT, GPRS_OK, *_s_serial);
+			waitResp(GPRS_WAIT, GPRS_OK, *_s_serial);
 			_s_serial->end();
 			delay(INIT_DLY);
 			_s_serial->begin(S_SPEED);
@@ -50,33 +113,40 @@ bool GprsModem::begin()
 
 uint32_t GprsModem::_checkRate()
 {
+	// reboot module
 	coldReboot();
-	static uint32_t rates[] = {
+	static const uint32_t rates[] = {
 		115200, 9600, 57600, 38400, 19200, 74400, 74880,
 		230400, 460800, 2400, 4800, 14400, 28800
 	};
 
-	for (uint8_t i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
+	size_t rate_size = sizeof(rates) / sizeof(rates[0]);
+
+	for (size_t i = 0; i < rate_size; i++) {
 		uint32_t rate = rates[i];
+		// if HardwareSerial
 		if (_serial)
 			_serial->begin(rate);
+		// if SoftwareSerial
 		else
 			_s_serial->begin(rate);
 
-		delay(CH_RATE_DLY);
+		//delay(CH_RATE_DLY);
 
 		for (uint8_t j = 0; j < NUM_TRIES; j++) {
 
 			if (_serial) {
 				_serial->println(GPRS_AT);
-				delay(CH_RATE_DLY);
-				if (GprsClient::waitResp(GPRS_WAIT, GPRS_OK, *_serial))
+				//delay(CH_RATE_DLY);
+				if (waitResp(GPRS_WAIT, GPRS_OK, *_serial)) {
+					//Serial.println(rate);
 					return rate;
+				}
 			}
 			else {
 				_s_serial->println(GPRS_AT);
-				delay(CH_RATE_DLY);
-				if (GprsClient::waitResp(GPRS_WAIT, GPRS_OK, *_s_serial)) {
+				//delay(CH_RATE_DLY);
+				if (waitResp(GPRS_WAIT, GPRS_OK, *_s_serial)) {
 					return rate;
 				}
 			}
@@ -101,8 +171,8 @@ uint8_t GprsModem::getSignalLevel()
 	String resp = "";
 	if (_serial) {
 		_serial->println(GPRS_SIGNAL);
-		delay(10);
-		if (GprsClient::waitResp(
+		//delay(10);
+		if (waitResp(
 					GPRS_WAIT,
 					GPRS_SIGNAL_RESP,
 					resp,
@@ -119,8 +189,8 @@ uint8_t GprsModem::getSignalLevel()
 	}
 	else {
 		_s_serial->println(GPRS_SIGNAL);
-		delay(10);
-		if (GprsClient::waitResp(
+		//delay(10);
+		if (waitResp(
 					GPRS_WAIT,
 					GPRS_SIGNAL_RESP,
 					resp,
@@ -133,12 +203,13 @@ uint8_t GprsModem::getSignalLevel()
 			resp.trim();
 			return (uint8_t) resp.toInt();
 		}
-
 	}
+	return 0;
 }
 
 /****************************** MODEM ENDS HERE ******************************/
 
+// Enter IP mode and configure internet
 bool GprsClient::begin()
 {
 	_serial.println("AT+CGATT=1");
@@ -147,10 +218,12 @@ bool GprsClient::begin()
 		return false;
 	}
 
+	/*
 	_serial.println("AT+CGDCONT=1,\"IP\",\"internet\"");
 
 	if (!waitResp(2000L, "OK", _serial))
 		return false;
+		*/
 
 	_serial.println("AT+CGACT=1,1");
 
@@ -298,3 +371,6 @@ void GprsClient::stop()
 	while (!_serial.available());
 	waitResp(2000ul, "OK", _serial);
 }
+
+/**/
+

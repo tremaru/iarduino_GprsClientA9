@@ -1,3 +1,4 @@
+// tabstop=8
 #ifndef gprsModem_h
 #define gprsModem_h
 
@@ -14,18 +15,9 @@
 // should improve speed even more.
 //#include "Dns.h"
 
-// AT prefix to start ip
-constexpr char* START = "AT+CIPSTART=";
-
-// Pass through mode. Pretty hard to implement Client class
-// with this. You expected to pass 0x1A at the end, which
-// is hard to predict when implementing print() funcs through
-// write() funcs.
-//constexpr char* PASS_THRU_MODE = "AT+CIPTMODE=1";
-
 // A9 modem is ridiculously slow.
 constexpr unsigned long GPRS_TIMEOUT = 4000;
-constexpr unsigned long SER_TIMEOUT = 4000;
+//constexpr unsigned long SER_TIMEOUT = 4000;
 constexpr uint8_t DEFAULT_PIN_PWR = 9;
 
 // modem class, for initialization.
@@ -51,10 +43,15 @@ class GprsModem {
 
 // client class.
 class GprsClient: public Client {
-	friend class GprsModem;
 	public:
-		GprsClient(const HardwareSerial& serial): _serial(serial) {_timeout = GPRS_TIMEOUT;}
-		GprsClient(const SoftwareSerial& serial): _serial(serial) {_timeout = GPRS_TIMEOUT;}
+		GprsClient(const HardwareSerial& serial): _serial(serial) {
+			_timeout = GPRS_TIMEOUT;
+		}
+
+		GprsClient(const SoftwareSerial& serial): _serial(serial) {
+			_timeout = GPRS_TIMEOUT;
+		}
+
 		int connect(const char* host, uint16_t port);
 		int connect(IPAddress ip, uint16_t port);
 		int connect(const char* host, uint16_t port, const char* protocol);
@@ -78,52 +75,6 @@ class GprsClient: public Client {
 
 		// this field becomes SoftwareSerial or HardwareSerial.
 		const Stream& _serial;
-
-		// function for waiting modem response. I had troubles getting
-		// it to work as a global function (for some reason arduino
-		// included everything two times, despite ifndef-guards. So here it
-		// is: static and friended. Probably shouldn't friended the whole
-		// class. But eh...
-		static bool waitResp(unsigned long time, const String& aresp, const Stream& stream)
-		{
-			unsigned long timer = millis();
-
-			String buf = "";
-
-			while (millis() - timer < time) {
-				if (stream.available()) {
-					timer = millis();
-					char c = stream.read();
-					buf += String(c);
-				}
-			}
-
-			if (aresp != nullptr)
-				return buf.indexOf((String)aresp) > -1 ? true : false;
-			else
-				return true;
-		}
-
-		static bool waitResp(unsigned long time, const String& aresp, String& buf, const Stream& stream)
-		{
-			unsigned long timer = millis();
-
-			buf = "";
-
-			while (millis() - timer < time) {
-				if (stream.available()) {
-					timer = millis();
-					char c = stream.read();
-					buf += String(c);
-				}
-			}
-
-			if (aresp != nullptr)
-				return buf.indexOf((String)aresp) > -1 ? true : false;
-			else
-				return true;
-		}
-
 };
 
 #endif
