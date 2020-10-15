@@ -4,26 +4,36 @@
 //#define H_CAST (*(HardwareSerial*)_serial)
 //#define S_CAST (*(SoftwareSerial*)_serial)
 
-// AT prefix to start ip
+// AT prefix to start IP
 constexpr char* START = "AT+CIPSTART=";
-
-// Pass through mode. Pretty hard to implement Client class
-// with this. You expected to pass 0x1A at the end, which
-// is hard to predict when implementing print() funcs through
-// write() funcs.
-//constexpr char* PASS_THRU_MODE = "AT+CIPTMODE=1";
-
+// default HardwareSerial speed
 constexpr unsigned long H_SPEED = 115200;
+// default SoftwareSerial speed
 constexpr unsigned long S_SPEED = 9600;
+// AT prefix for changing baud rate
 constexpr char* GPRS_IPR = "ATZ+IPR=";
+
 constexpr char* GPRS_AT = "AT";
 constexpr char* GPRS_OK = "OK";
+
+// Get the signal level and
 constexpr char* GPRS_SIGNAL = "AT+CSQ";
+// its response
 constexpr char* GPRS_SIGNAL_RESP = "+CSQ:";
+// Close the connection
+constexpr char* GPRS_CLOSE = "AT+CIPCLOSE";
+// IP mode?
+constexpr char* GPRS_CIPTMODE = "AT+CIPTMODE=1";
+// Successful connection response
+constexpr char* CONNECT_STATUS = "CONNECT OK";
+// Default interval for waitResp() in ms
 constexpr unsigned long GPRS_WAIT = 2000;
+// Default delay for coldReboot() in ms
 constexpr unsigned long REBOOT_DLY = 2000;
+// Default delay for begin() in ms
 constexpr unsigned long INIT_DLY = 100;
-constexpr unsigned long CH_RATE_DLY = 10;
+//constexpr unsigned long CH_RATE_DLY = 10;
+// Default tries for _checkRate()
 constexpr uint8_t NUM_TRIES = 2;
 
 /****************************** UTILITY FUNCS ******************************/
@@ -212,12 +222,14 @@ uint8_t GprsModem::getSignalLevel()
 // Enter IP mode and configure internet
 bool GprsClient::begin()
 {
-	_serial.println("AT+CGATT=1");
+	_serial.println(F("AT+CGATT=1"));
 
-	if (!waitResp(2000L, "+CGATT:1", _serial)) {
+	if (!waitResp(GPRS_WAIT, F("+CGATT:1"), _serial)) {
 		return false;
 	}
 
+	// Used to connect to Megafon. Works without it. Hadn't been checked
+	// with other operators.
 	/*
 	_serial.println("AT+CGDCONT=1,\"IP\",\"internet\"");
 
@@ -225,9 +237,9 @@ bool GprsClient::begin()
 		return false;
 		*/
 
-	_serial.println("AT+CGACT=1,1");
+	_serial.println(F("AT+CGACT=1,1"));
 
-	if (!waitResp(2000L, "OK", _serial))
+	if (!waitResp(GPRS_WAIT, GPRS_OK, _serial))
 		return false;
 
 	// use this to enable sockets. Whole code should be rewritten
@@ -240,8 +252,8 @@ bool GprsClient::begin()
 	return true;
 }
 
-#define CONNECT_STATUS "CONNECT OK"
 
+// Connect to host name with default protocol (TCP)
 int GprsClient::connect(const char* host, uint16_t port)
 {
 	String reqstr = (String)START
@@ -252,21 +264,23 @@ int GprsClient::connect(const char* host, uint16_t port)
 
 	while(!_serial.available());
 
-	if (!waitResp(2000ul, String(CONNECT_STATUS), _serial))
+	if (!waitResp(GPRS_WAIT, String(CONNECT_STATUS), _serial))
 		return 0;
 
-	reqstr = "AT+CIPTMODE=1";
+	//reqstr = "AT+CIPTMODE=1";
+	reqstr = String(GPRS_CIPTMODE);
 	_serial.println(reqstr);
 
 	while(!_serial.available());
 
 
-	if (waitResp(2000ul, "OK", _serial))
+	if (waitResp(GPRS_WAIT, GPRS_OK, _serial))
 		return 1;
 
 	return 0;
 }
 
+// Connect to host name with protocol
 int GprsClient::connect(const char* host, uint16_t port, const char* protocol)
 {
 	_protocol = protocol;
@@ -278,20 +292,22 @@ int GprsClient::connect(const char* host, uint16_t port, const char* protocol)
 	while(!_serial.available()); // is it needed?
 
 
-	if (!waitResp(2000ul, String(CONNECT_STATUS), _serial))
+	if (!waitResp(GPRS_WAIT, String(CONNECT_STATUS), _serial))
 		return 0;
 
-	reqstr = "AT+CIPTMODE=1";
+	//reqstr = "AT+CIPTMODE=1";
+	reqstr = String(GPRS_CIPTMODE);
 	_serial.println(reqstr);
 
 	while(!_serial.available()); // is it needed?
 
 
-	if (waitResp(2000ul, "OK", _serial))
+	if (waitResp(GPRS_WAIT, GPRS_OK, _serial))
 		return 1;
 	return 0;
 }
 
+// Connect by IP address
 int GprsClient::connect(IPAddress ip, uint16_t port)
 {
 // following ifdefs are copied from TinyGSM by Volodymyr Shymanskyy. Thank you dude.
@@ -313,16 +329,17 @@ int GprsClient::connect(IPAddress ip, uint16_t port)
 
 	while(!_serial.available());
 
-	if (!waitResp(2000ul, String(CONNECT_STATUS), _serial))
+	if (!waitResp(GPRS_WAIT, String(CONNECT_STATUS), _serial))
 		return 0;
 
-	reqstr = "AT+CIPTMODE=1";
+	//reqstr = "AT+CIPTMODE=1";
+	reqstr = String(GPRS_CIPTMODE);
 	_serial.println(reqstr);
 
 	while(!_serial.available());
 
 
-	if (waitResp(2000ul, "OK", _serial))
+	if (waitResp(GPRS_WAIT, GPRS_OK, _serial))
 		return 1;
 	return 0;
 }
@@ -367,9 +384,9 @@ int GprsClient::read(uint8_t* buf, size_t size)
 
 void GprsClient::stop()
 {
-	_serial.println("AT+CIPCLOSE");
+	_serial.println(GPRS_CLOSE);
 	while (!_serial.available());
-	waitResp(2000ul, "OK", _serial);
+	waitResp(GPRS_WAIT, GPRS_OK, _serial);
 }
 
 /**/
