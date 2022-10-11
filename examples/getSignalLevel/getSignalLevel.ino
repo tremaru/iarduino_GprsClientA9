@@ -2,13 +2,15 @@
 #include <GprsModem.h>
 #include <SoftwareSerial.h>
 
-//#define mySerial Serial1
-#define RX 7
-#define TX 8
+//#define mySerial Serial1 // Раскоменитеруйте строку для работы с аппаратным портом
+#define RX 8
+#define TX 9
+// Определяем вывод PWR
+#define PWR 7
 
 // Создаём объекты библиотек
-SoftwareSerial mySerial(RX, TX);
-GprsModem myModem(mySerial);
+SoftwareSerial mySerial(RX, TX); // Удалите строку для использования с аппаратным портом
+GprsModem myModem(mySerial, PWR);
 
 void setup()
 {

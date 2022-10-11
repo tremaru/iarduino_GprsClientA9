@@ -5,41 +5,41 @@
 //#define S_CAST (*(SoftwareSerial*)_serial)
 
 // AT prefix to start IP
-constexpr char* START = "AT+CIPSTART=";
+const char* START = "AT+CIPSTART=";
 // default HardwareSerial speed
-constexpr unsigned long H_SPEED = 115200;
+const unsigned long H_SPEED = 115200;
 // default SoftwareSerial speed
-constexpr unsigned long S_SPEED = 9600;
+const unsigned long S_SPEED = 9600;
 // AT prefix for changing baud rate
-constexpr char* GPRS_IPR = "ATZ+IPR=";
+const char* GPRS_IPR = "ATZ+IPR=";
 
-constexpr char* GPRS_AT = "AT";
-constexpr char* GPRS_OK = "OK";
+const char* GPRS_AT = "AT";
+const char* GPRS_OK = "OK";
 
 // Get the signal level and
-constexpr char* GPRS_SIGNAL = "AT+CSQ";
+const char* GPRS_SIGNAL = "AT+CSQ";
 // its response
-constexpr char* GPRS_SIGNAL_RESP = "+CSQ:";
+const char* GPRS_SIGNAL_RESP = "+CSQ:";
 // Close the connection
-constexpr char* GPRS_CLOSE = "AT+CIPCLOSE";
+const char* GPRS_CLOSE = "AT+CIPCLOSE";
 // IP mode?
-constexpr char* GPRS_CIPTMODE = "AT+CIPTMODE=1";
+const char* GPRS_CIPTMODE = "AT+CIPTMODE=1";
 // Successful connection response
-constexpr char* CONNECT_STATUS = "CONNECT OK";
+const char* CONNECT_STATUS = "CONNECT OK";
 // Default interval for waitResp() in ms
-constexpr unsigned long GPRS_WAIT = 2000;
+const unsigned long GPRS_WAIT = 2000;
 // Default delay for coldReboot() in ms
-constexpr unsigned long REBOOT_DLY = 2000;
+const unsigned long REBOOT_DLY = 2000;
 // Default delay for begin() in ms
-constexpr unsigned long INIT_DLY = 100;
-//constexpr unsigned long CH_RATE_DLY = 10;
+const unsigned long INIT_DLY = 100;
+//const unsigned long CH_RATE_DLY = 10;
 // Default tries for _checkRate()
-constexpr uint8_t NUM_TRIES = 2;
+const uint8_t NUM_TRIES = 2;
 
 /****************************** UTILITY FUNCS ******************************/
 
 // Function for waiting a response from the module
-static bool waitResp(unsigned long time, const String& aresp, String& buf, const Stream& stream)
+static bool waitResp(unsigned long time, const String& aresp, String& buf, Stream& stream)
 {
 	unsigned long timer = millis();
 
@@ -61,7 +61,7 @@ static bool waitResp(unsigned long time, const String& aresp, String& buf, const
 }
 
 // Same as before, overloaded
-static bool waitResp(unsigned long time, const String& aresp, const Stream& stream)
+static bool waitResp(unsigned long time, const String& aresp, Stream& stream)
 {
 	unsigned long timer = millis();
 
@@ -89,7 +89,7 @@ bool GprsModem::begin()
 {
 
 	// Checking rate
-	uint32_t rate = _checkRate();
+	int32_t rate = _checkRate();
 
 	// if checking rate was unsuccessful
 	if (rate == -1)
@@ -121,7 +121,7 @@ bool GprsModem::begin()
  * by Volodymyr Shymanskyy. Thank you, dude.
  */
 
-uint32_t GprsModem::_checkRate()
+int32_t GprsModem::_checkRate()
 {
 	// reboot module
 	coldReboot();
@@ -166,12 +166,12 @@ uint32_t GprsModem::_checkRate()
 }
 
 // Cold reboot thru power pin
-void GprsModem::coldReboot(uint8_t pinPWR)
+void GprsModem::coldReboot()
 {
-	pinMode(pinPWR, OUTPUT);
-	digitalWrite(pinPWR, HIGH);
+	pinMode(_pinPWR, OUTPUT);
+	digitalWrite(_pinPWR, HIGH);
 	delay(REBOOT_DLY);
-	digitalWrite(pinPWR, LOW);
+	digitalWrite(_pinPWR, LOW);
 	delay(REBOOT_DLY);
 }
 

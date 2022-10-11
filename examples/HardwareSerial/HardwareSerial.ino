@@ -6,10 +6,13 @@
 // Если модуль подключён к Piranha UNO
 #define mySerial Serial
 
-// Если модуль подлючён к Piranha ULTRA или Arduino MEGA
+// Если модуль подлючён к Piranha ULTRA
 // Раскомментируйте эту строку и закомментируйте или удалите
-// предыдущую. Переключите Shield на работу с выводами 7 и 8.
+// предыдущую. Переключите Shield на работу с выводами 8 и 9.
 //#define mySerial Serial1
+
+// Определяем вывод PWR
+#define PWR 7
 
 // Данные для получения информации от удалённого узла
 char host[] = "www.google.com";
@@ -17,7 +20,7 @@ char req[] = "GET /search?q=iarduino HTTP/1.1";
 int port = 80;
 
 // Создаём объекты библиотек
-GprsModem myModem(mySerial);
+GprsModem myModem(mySerial, PWR);
 GprsClient myClient(mySerial);
 
 void setup()

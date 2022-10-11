@@ -1,6 +1,6 @@
 // tabstop=8
-#ifndef gprsModem_h
-#define gprsModem_h
+#ifndef __GPRSMODEM_H__
+#define __GPRSMODEM_H__
 
 //TODO: add sockets. AT+CIPMUX=1. Theoretically this should improve speed.
 
@@ -15,66 +15,70 @@
 // should improve speed even more.
 //#include "Dns.h"
 
-// A9 modem is ridiculously slow.
-constexpr unsigned long GPRS_TIMEOUT = 4000;
-//constexpr unsigned long SER_TIMEOUT = 4000;
-constexpr uint8_t DEFAULT_PIN_PWR = 9;
+// A9 modem is ridiculously slow. This sets Stream class timeout before aborting
+// the read of next char (Client:Stream _timeout protected field) in milliseconds
+constexpr unsigned long STREAM_TIMEOUT = 4000;
 
-// modem class, for initialization.
+// modem class, for hardware initialization.
 class GprsModem {
 	public:
-		GprsModem(const HardwareSerial& serial):
+		GprsModem(HardwareSerial& serial, int pinPWR):
+			_pinPWR(pinPWR),
 			_serial(&serial),
 			_s_serial(nullptr) {}
-		GprsModem(const SoftwareSerial& serial):
+		GprsModem(SoftwareSerial& serial, int pinPWR):
+			_pinPWR(pinPWR),
 			_serial(nullptr),
 			_s_serial(&serial) {}
 		bool begin();
-		void coldReboot(uint8_t pinPWR = DEFAULT_PIN_PWR);
+		void coldReboot();
 		uint8_t getSignalLevel();
 	private:
-		uint32_t _checkRate();
+		int32_t _checkRate();
 
 		// had to create two fields and this whole class because
 		// begin() funcs are absent in the Stream class.
-		const HardwareSerial* _serial;
-		const SoftwareSerial* _s_serial;
+		int _pinPWR;
+		HardwareSerial* _serial;
+		SoftwareSerial* _s_serial;
+
 };
 
-// client class.
+// client class. Should work with everithing that Arduino client does
 class GprsClient: public Client {
 	public:
-		GprsClient(const HardwareSerial& serial): _serial(serial) {
-			_timeout = GPRS_TIMEOUT;
+		GprsClient(HardwareSerial& serial): _serial(serial) {
+			_timeout = STREAM_TIMEOUT;
 		}
 
-		GprsClient(const SoftwareSerial& serial): _serial(serial) {
-			_timeout = GPRS_TIMEOUT;
+		GprsClient(SoftwareSerial& serial): _serial(serial) {
+			_timeout = STREAM_TIMEOUT;
 		}
 
-		int connect(const char* host, uint16_t port);
-		int connect(IPAddress ip, uint16_t port);
-		int connect(const char* host, uint16_t port, const char* protocol);
-		int available();
-		size_t write(uint8_t);
-		size_t write(const uint8_t *buf, size_t size);
-		int read();
-		void stop();
 		bool begin();
-		int read(uint8_t* buf, size_t size);
+		int connect(const char* host, uint16_t port, const char* protocol);
 
-		// empty functions:
-		int availableForWrite() { return 0;}
-		void flush() {};
-		int peek() { return 0; }
-		uint8_t connected() { return 0; }
-		operator bool() { return false; }
+		virtual int connect(const char* host, uint16_t port) override;
+		virtual int connect(IPAddress ip, uint16_t port) override;
+		virtual int available() override;
+		virtual size_t write(uint8_t) override;
+		virtual size_t write(const uint8_t *buf, size_t size) override;
+		virtual int read() override;
+		virtual void stop() override;
+		virtual int read(uint8_t* buf, size_t size) override;
+
+		// empty functions (cannot be implemented for this hardware):
+		virtual int availableForWrite() override { return 0;}
+		virtual void flush() override {};
+		virtual int peek() override { return 0; }
+		virtual uint8_t connected() override { return 0; }
+		virtual operator bool() override { return false; }
 
 	private:
 		String _protocol = "TCP";
 
 		// this field becomes SoftwareSerial or HardwareSerial.
-		const Stream& _serial;
+		Stream& _serial;
 };
 
-#endif
+#endif // __GPRSMODEM_H__

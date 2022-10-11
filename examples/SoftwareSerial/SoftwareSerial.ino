@@ -5,8 +5,10 @@
 #include <SoftwareSerial.h>
 
 // Определяем выводы RX, TX
-#define RX 7
-#define TX 8
+#define RX 8
+#define TX 9
+// Определяем вывод PWR
+#define PWR 7
 
 // Данные для получения информации от удалённого узла
 char host[] = "www.google.com";
@@ -15,7 +17,7 @@ int port = 80;
 
 // Создаём объекты библиотек
 SoftwareSerial mySerial(RX, TX);
-GprsModem myModem(mySerial);
+GprsModem myModem(mySerial, PWR);
 GprsClient myClient(mySerial);
 
 void setup()

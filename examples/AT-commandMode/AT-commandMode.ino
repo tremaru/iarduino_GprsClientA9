@@ -8,16 +8,18 @@
 
 // Если модуль подлючён к Piranha ULTRA или Arduino MEGA
 // Раскомментируйте эту следующую строку и удалите указанные
-// ниже строки. Переключите Shield на работу с выводами 7 и 8.
+// ниже строки.
 //#define mySerial Serial1
 
 // Определяем выводы RX, TX
-#define RX 7
-#define TX 8
+#define RX 8
+#define TX 9
+// Определяем вывод PWR
+#define PWR 7
 
 // Создаём объекты библиотек
 SoftwareSerial mySerial(RX, TX); // Эту сроку необходимо удалить для работы с аппаратным последовательным портом
-GprsModem myModem(mySerial);
+GprsModem myModem(mySerial, PWR);
 GprsClient myClient(mySerial);
 
 void setup()
