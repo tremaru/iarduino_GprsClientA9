@@ -1,7 +1,6 @@
 // tabstop=8
 #define ECHO_ON
 #include "GprsModem.h"
-#define _BUFSIZ 127
 
 // AT prefix to start IP
 const char* START = "AT+CIPSTART=";
@@ -17,6 +16,8 @@ const char* GPRS_OK = "OK";
 
 // Get the signal level and
 const char* GPRS_SIGNAL = "AT+CSQ";
+// echo off
+const char* GPRS_ECHO_OFF = "ATE0";
 // its response
 const char* GPRS_SIGNAL_RESP = "+CSQ:";
 // Close the connection
@@ -76,6 +77,7 @@ static bool waitResp(unsigned long time, const char* req, String& buf, Stream& s
 // Same as before, overloaded
 static bool waitResp(unsigned long time, const char* req, Stream& stream)
 {
+	delay(10);
 	unsigned long timer = millis();
 
 	String aresp = req;
@@ -116,7 +118,6 @@ static bool waitResp(unsigned long time, const char* req, Stream& stream)
 // Modem module init.
 bool GprsModem::begin()
 {
-
 	// Checking rate
 	int32_t rate = _checkRate();
 
@@ -161,11 +162,17 @@ int32_t GprsModem::_checkRate()
 		_serial->end();
 		_serial->begin(115200);
 		waitResp(GPRS_WAIT*2, GPRS_READY, *_serial);
+		_serial->print(GPRS_ECHO_OFF);
+		_serial->print("\r");
+		waitResp(GPRS_WAIT, GPRS_OK, *_serial);
 	}
 	else {
 		_s_serial->end();
 		_s_serial->begin(115200);
 		waitResp(GPRS_WAIT*2, GPRS_READY, *_s_serial);
+		_s_serial->print(GPRS_ECHO_OFF);
+		_s_serial->print("\r");
+		waitResp(GPRS_WAIT, GPRS_OK, *_s_serial);
 	}
 
 	static const uint32_t rates[] = {
@@ -226,7 +233,6 @@ void GprsModem::coldReboot()
 	delay(REBOOT_DLY);
 }
 
-
 uint8_t GprsModem::getSignalLevel()
 {
 	String resp = "";
@@ -276,32 +282,27 @@ uint8_t GprsModem::getSignalLevel()
 bool GprsClient::begin()
 {
 	_serial.setTimeout(STREAM_TIMEOUT);
-	/*
+
 	_serial.print(F("AT+CGATT=1"));
 	_serial.print('\r');
 
 	if (!waitResp(GPRS_WAIT, "+CGATT:1", _serial)) {
 		return false;
 	}
-	*/
 
 	// Used to connect to Megafon. Works without it. Hadn't been checked
 	// with other operators.
-	/*
 	_serial.print("AT+CGDCONT=1,\"IP\",\"internet\"");
 	_serial.print('\r');
 
 	if (!waitResp(2000L, "OK", _serial))
 		return false;
-		*/
 
-	/*
 	_serial.print(F("AT+CGACT=1,1"));
 	_serial.print('\r');
 
 	if (!waitResp(GPRS_WAIT, GPRS_OK, _serial))
 		return false;
-		*/
 
 	// use this to enable sockets. Whole code should be rewritten
 	// if those are enabled.
@@ -329,7 +330,7 @@ int GprsClient::connect(const char* host, uint16_t port)
 	_serial.print(reqstr);
 	_serial.print('\r');
 
-	while(!_serial.available());
+	//while(!_serial.available());
 
 	if (!waitResp(GPRS_WAIT, CONNECT_STATUS, _serial))
 		return 0;
@@ -339,7 +340,7 @@ int GprsClient::connect(const char* host, uint16_t port)
 	_serial.print(reqstr);
 	_serial.print('\r');
 
-	while(!_serial.available());
+	//while(!_serial.available());
 
 
 	if (waitResp(GPRS_WAIT, GPRS_OK, _serial))
@@ -358,7 +359,7 @@ int GprsClient::connect(const char* host, uint16_t port, const char* protocol)
 	_serial.print(reqstr);
 	_serial.print('\r');
 
-	while(!_serial.available()); // is it needed?
+	//while(!_serial.available()); // is it needed?
 
 
 	if (!waitResp(GPRS_WAIT, CONNECT_STATUS, _serial))
@@ -369,7 +370,7 @@ int GprsClient::connect(const char* host, uint16_t port, const char* protocol)
 	_serial.print(reqstr);
 	_serial.print('\r');
 
-	while(!_serial.available()); // is it needed?
+	//while(!_serial.available()); // is it needed?
 
 
 	if (waitResp(GPRS_WAIT, GPRS_OK, _serial))
