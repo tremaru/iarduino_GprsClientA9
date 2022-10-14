@@ -17,7 +17,7 @@ const char* GPRS_OK = "OK";
 // Get the signal level and
 const char* GPRS_SIGNAL = "AT+CSQ";
 // echo off
-const char* GPRS_ECHO_OFF = "ATE0";
+const char* GPRS_ECHO_OFF = "ATE1";
 // its response
 const char* GPRS_SIGNAL_RESP = "+CSQ:";
 // Close the connection
@@ -31,7 +31,7 @@ const char* GPRS_READY = "READY";
 // Default interval for waitResp() in ms
 const unsigned long GPRS_WAIT = 8000;
 // Default delay for coldReboot() in ms
-const unsigned long REBOOT_DLY = 2000;
+const unsigned long REBOOT_DLY = 10000;
 // Default delay for begin() in ms
 const unsigned long INIT_DLY = 100;
 //const unsigned long CH_RATE_DLY = 10;
