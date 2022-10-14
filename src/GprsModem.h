@@ -1,6 +1,13 @@
 // tabstop=8
 #ifndef __GPRSMODEM_H__
 #define __GPRSMODEM_H__
+#include <Arduino.h>
+
+#ifdef ECHO_ON
+#define echo(A) Serial.print(A);
+#else
+#define echo(FMT, ...) do {} while(0)
+#endif
 
 //TODO: add sockets. AT+CIPMUX=1. Theoretically this should improve speed.
 
@@ -16,7 +23,7 @@
 //#include "Dns.h"
 
 // A9 modem is ridiculously slow. This sets Stream class timeout before aborting
-// the read of next char (Client:Stream _timeout protected field) in milliseconds
+// the read of next char (Client:Stream _timeout protected field)
 constexpr unsigned long STREAM_TIMEOUT = 4000;
 
 // modem class, for hardware initialization.
@@ -48,11 +55,11 @@ class GprsModem {
 class GprsClient: public Client {
 	public:
 		GprsClient(HardwareSerial& serial): _serial(serial) {
-			_timeout = STREAM_TIMEOUT;
+			//_timeout = STREAM_TIMEOUT;
 		}
 
 		GprsClient(SoftwareSerial& serial): _serial(serial) {
-			_timeout = STREAM_TIMEOUT;
+			//_timeout = STREAM_TIMEOUT;
 		}
 
 		bool begin();
@@ -61,9 +68,18 @@ class GprsClient: public Client {
 		virtual int connect(const char* host, uint16_t port) override;
 		virtual int connect(IPAddress ip, uint16_t port) override;
 		virtual int available() override;
-		virtual size_t write(uint8_t) override;
-		virtual size_t write(const uint8_t *buf, size_t size) override;
-		virtual int read() override;
+		virtual size_t write(uint8_t B) override
+		{
+			return _serial.write(B);
+		}
+		virtual size_t write(const uint8_t *buf, size_t size) override
+		{
+			return _serial.write(buf, size);
+		}
+		virtual int read() override
+		{
+			return _serial.read();
+		}
 		virtual void stop() override;
 		virtual int read(uint8_t* buf, size_t size) override;
 
