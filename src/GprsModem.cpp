@@ -16,8 +16,6 @@ const char* GPRS_OK = "OK";
 
 // Get the signal level and
 const char* GPRS_SIGNAL = "AT+CSQ";
-// echo off
-const char* GPRS_ECHO_OFF = "ATE1";
 // its response
 const char* GPRS_SIGNAL_RESP = "+CSQ:";
 // Close the connection
@@ -31,7 +29,7 @@ const char* GPRS_READY = "READY";
 // Default interval for waitResp() in ms
 const unsigned long GPRS_WAIT = 8000;
 // Default delay for coldReboot() in ms
-const unsigned long REBOOT_DLY = 10000;
+const unsigned long REBOOT_DLY = 2000;
 // Default delay for begin() in ms
 const unsigned long INIT_DLY = 100;
 //const unsigned long CH_RATE_DLY = 10;
@@ -92,10 +90,12 @@ static bool waitResp(unsigned long time, const char* req, Stream& stream)
 			timer = millis();
 			//delay(3);
 			int c = stream.read();
+			/*
 			if (c == -1)
-				echo("***********WTF?**********");
+				echo("*********** -1 **********\r\n");
 			if (c == 0)
-				echo("****************RECIEVED ZERO****************");
+				echo("****************RECIEVED ZERO****************\r\n");
+				*/
 			buf += (char)c; //stream.read();
 		}
 		else {
@@ -118,6 +118,9 @@ static bool waitResp(unsigned long time, const char* req, Stream& stream)
 // Modem module init.
 bool GprsModem::begin()
 {
+	// reboot module
+	coldReboot();
+
 	// Checking rate
 	int32_t rate = _checkRate();
 
@@ -155,24 +158,29 @@ bool GprsModem::begin()
 
 int32_t GprsModem::_checkRate()
 {
-	// reboot module
-	coldReboot();
-
 	if (_serial) {
 		_serial->end();
+		delay(100);
 		_serial->begin(115200);
-		waitResp(GPRS_WAIT*2, GPRS_READY, *_serial);
-		_serial->print(GPRS_ECHO_OFF);
-		_serial->print("\r");
-		waitResp(GPRS_WAIT, GPRS_OK, *_serial);
+		while(!(*_serial));
+		unsigned long time = millis();
+		while(millis() - time < GPRS_WAIT) {
+			if (_serial->available())
+				_serial->read();
+		}
+		//waitResp(GPRS_WAIT*2, GPRS_READY, *_serial);
 	}
 	else {
 		_s_serial->end();
+		delay(100);
 		_s_serial->begin(115200);
-		waitResp(GPRS_WAIT*2, GPRS_READY, *_s_serial);
-		_s_serial->print(GPRS_ECHO_OFF);
-		_s_serial->print("\r");
-		waitResp(GPRS_WAIT, GPRS_OK, *_s_serial);
+		while(!(*_s_serial));
+		unsigned long time = millis();
+		while(millis() - time < GPRS_WAIT) {
+			if (_s_serial->available())
+				_s_serial->read();
+		}
+		//waitResp(GPRS_WAIT*2, GPRS_READY, *_s_serial);
 	}
 
 	static const uint32_t rates[] = {
@@ -231,6 +239,7 @@ void GprsModem::coldReboot()
 	delay(REBOOT_DLY);
 	digitalWrite(_pinPWR, LOW);
 	delay(REBOOT_DLY);
+	//delay(500);
 }
 
 uint8_t GprsModem::getSignalLevel()
@@ -281,7 +290,7 @@ uint8_t GprsModem::getSignalLevel()
 // Enter IP mode and configure internet
 bool GprsClient::begin()
 {
-	_serial.setTimeout(STREAM_TIMEOUT);
+	//_serial.setTimeout(STREAM_TIMEOUT);
 
 	_serial.print(F("AT+CGATT=1"));
 	_serial.print('\r');
@@ -292,11 +301,13 @@ bool GprsClient::begin()
 
 	// Used to connect to Megafon. Works without it. Hadn't been checked
 	// with other operators.
+	/*
 	_serial.print("AT+CGDCONT=1,\"IP\",\"internet\"");
 	_serial.print('\r');
 
 	if (!waitResp(2000L, "OK", _serial))
 		return false;
+		*/
 
 	_serial.print(F("AT+CGACT=1,1"));
 	_serial.print('\r');
@@ -366,7 +377,7 @@ int GprsClient::connect(const char* host, uint16_t port, const char* protocol)
 		return 0;
 
 	//reqstr = "AT+CIPTMODE=1";
-	reqstr = String(GPRS_CIPTMODE);
+	reqstr = GPRS_CIPTMODE;
 	_serial.print(reqstr);
 	_serial.print('\r');
 
@@ -405,7 +416,7 @@ int GprsClient::connect(IPAddress ip, uint16_t port)
 		return 0;
 
 	//reqstr = "AT+CIPTMODE=1";
-	reqstr = String(GPRS_CIPTMODE);
+	reqstr = GPRS_CIPTMODE;
 	_serial.print(reqstr);
 	_serial.print('\r');
 
@@ -448,4 +459,3 @@ void GprsClient::stop()
 }
 
 /**/
-

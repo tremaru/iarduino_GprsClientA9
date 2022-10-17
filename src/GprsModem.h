@@ -24,7 +24,7 @@
 
 // A9 modem is ridiculously slow. This sets Stream class timeout before aborting
 // the read of next char (Client:Stream _timeout protected field)
-constexpr unsigned long STREAM_TIMEOUT = 4000;
+//constexpr unsigned long STREAM_TIMEOUT = 4000;
 
 // modem class, for hardware initialization.
 class GprsModem {
@@ -55,11 +55,9 @@ class GprsModem {
 class GprsClient: public Client {
 	public:
 		GprsClient(HardwareSerial& serial): _serial(serial) {
-			//_timeout = STREAM_TIMEOUT;
 		}
 
 		GprsClient(SoftwareSerial& serial): _serial(serial) {
-			//_timeout = STREAM_TIMEOUT;
 		}
 
 		bool begin();
