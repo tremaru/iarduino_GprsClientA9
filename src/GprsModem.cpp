@@ -171,9 +171,6 @@ bool GprsModem::begin()
 	// reboot module
 	coldReboot();
 
-	// Checking rate
-	//int32_t rate = _checkRate();
-
 	// init serial
 	if (_h_serial) {
 		_h_serial->end();
@@ -199,6 +196,7 @@ bool GprsModem::begin()
 		delay(INIT_DLY);
 	}
 
+	drainBuffer(_serial);
 	// checking if module responds...
 	for (int i = 0; i < NUM_TRIES; i++) {
 		String command = GPRS_AT;
