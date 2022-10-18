@@ -4,9 +4,10 @@
 #include <Arduino.h>
 
 #ifdef ECHO_ON
-#define echo(A) Serial.print(A);
+#define echo(A) Serial.print((String)"["+millis()+"] "+__func__+": ");\
+       	Serial.println(A);
 #else
-#define echo(FMT, ...) do {} while(0)
+#define echo(A) do {} while(0)
 #endif
 
 //TODO: add sockets. AT+CIPMUX=1. Theoretically this should improve speed.
@@ -22,33 +23,54 @@
 // should improve speed even more.
 //#include "Dns.h"
 
-// A9 modem is ridiculously slow. This sets Stream class timeout before aborting
-// the read of next char (Client:Stream _timeout protected field)
-//constexpr unsigned long STREAM_TIMEOUT = 4000;
+enum {
+	GPRS_OK		,
+	GPRS_SPEED_ERR	,
+	GPRS_UNAVAILABLE,
+	GPRS_UNKNOWN	,
+	GPRS_SLEEP	,
+	GPRS_SIM_PIN	,
+	GPRS_SIM_PUK	,
+	GPRS_SIM_PIN2	,
+	GPRS_SIM_PUK2	,
+	GPRS_SIM_NO	,
+	GPRS_SIM_FAULT	,
+	GPRS_SIM_ERR	,
+	GPRS_REG_NO	,
+	GPRS_REG_FAULT	,
+	GPRS_REG_ERR
+};
 
 // modem class, for hardware initialization.
 class GprsModem {
 	public:
 		GprsModem(HardwareSerial& serial, int pinPWR):
 			_pinPWR(pinPWR),
-			_serial(&serial),
-			_s_serial(nullptr) {}
+			_h_serial(&serial),
+			_s_serial(nullptr),
+       			_serial(serial)	{}
 		GprsModem(SoftwareSerial& serial, int pinPWR):
 			_pinPWR(pinPWR),
-			_serial(nullptr),
-			_s_serial(&serial) {}
+			_h_serial(nullptr),
+			_s_serial(&serial),
+       			_serial(serial)	{}
+
 		bool begin();
 		void coldReboot();
 		uint8_t getSignalLevel();
+		uint8_t status();
 	private:
 		int32_t _checkRate();
 
 		// had to create two fields and this whole class because
 		// begin() funcs are absent in the Stream class.
 		int _pinPWR;
-		HardwareSerial* _serial;
+		// for begin only
+		HardwareSerial* _h_serial;
 		SoftwareSerial* _s_serial;
-
+		// more generic
+		Stream& _serial;
+		bool _speed = false;
 };
 
 // client class. Should work with everithing that Arduino client does

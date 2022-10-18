@@ -2,6 +2,11 @@
 #define ECHO_ON
 #include "GprsModem.h"
 
+#define SERIAL_CLEAR 5000
+#define SPEED_CHANGE_WAIT 500
+#define VERY_LONG_WAIT 10000
+#define CONNECT_TIMEOUT 8000
+
 // AT prefix to start IP
 const char* START = "AT+CIPSTART=";
 // default HardwareSerial speed
@@ -12,7 +17,7 @@ const unsigned long S_SPEED = 9600;
 const char* GPRS_IPR = "ATZ+IPR=";
 
 const char* GPRS_AT = "AT";
-const char* GPRS_OK = "OK";
+const char* GPRS_STR_OK = "OK";
 
 // Get the signal level and
 const char* GPRS_SIGNAL = "AT+CSQ";
@@ -27,79 +32,114 @@ const char* CONNECT_STATUS = "CONNECT OK";
 // Ready after reboot
 const char* GPRS_READY = "READY";
 // Default interval for waitResp() in ms
-const unsigned long GPRS_WAIT = 8000;
+const unsigned long GPRS_WAIT = 200;
 // Default delay for coldReboot() in ms
 const unsigned long REBOOT_DLY = 2000;
 // Default delay for begin() in ms
 const unsigned long INIT_DLY = 100;
 //const unsigned long CH_RATE_DLY = 10;
 // Default tries for _checkRate()
-const uint8_t NUM_TRIES = 2;
+const uint8_t NUM_TRIES = 10;
 
 /****************************** UTILITY FUNCS ******************************/
-
-// Function for waiting a response from the module
-static bool waitResp(unsigned long time, const char* req, String& buf, Stream& stream)
+// functions used by both classes
+static void AT(
+		String command,
+		String& buf,
+		Stream& stream,
+		unsigned long timeout = GPRS_WAIT)
 {
-	unsigned long timer = millis();
-
 	buf = "";
-	String aresp = req;
+	command += "\r";
+	stream.print(command);
+	echo("SENT TO SHEILD: ");
+	echo(command);
 
-	while (millis() - timer < time) {
+	unsigned long timer = millis();
+	while (millis() - timer < timeout) {
 		if (stream.available()) {
 			timer = millis();
-			int i = stream.read();
-			char c = (uint8_t)i;
-			//char c = stream.read();
-			Serial.write(i);
-			buf += String(c);
+			int c = stream.read();
+			if (c != 0 && c != -1)
+				buf += (char)c;
+		}
+		else {
+			delay(10);
 		}
 	}
-
-	aresp+="\0";
-
-	echo(F("WAITING FOR: "));
-	echo(aresp);
-	echo("\n");
-	echo(F("ECHO: "));
-	echo(buf.c_str());
-
-	if (aresp.length()) {
-		return (buf.indexOf(aresp) > -1) ? true : false;
-	}
-	else
-		return true;
 }
 
-// Same as before, overloaded
-static bool waitResp(unsigned long time, const char* req, Stream& stream)
+static bool AT(
+		String command,
+		const char* resp,
+		String& buf,
+		Stream& stream,
+		unsigned long timeout = GPRS_WAIT)
 {
-	delay(10);
-	unsigned long timer = millis();
+	buf = "";
+	command += "\r";
+	stream.print(command);
 
-	String aresp = req;
+	echo("SENT TO SHIELD: ");
+	echo(command);
 	echo("WAITING FOR: ");
-	echo(aresp);
-	echo("\n");
+	echo(resp);
 
-	String buf;
+	String aresp = resp;
 
-	while (millis() - timer < time) {
+	unsigned long timer = millis();
+	while (millis() - timer < timeout) {
 		if (stream.available()) {
 			timer = millis();
-			//delay(3);
 			int c = stream.read();
-			/*
-			if (c == -1)
-				echo("*********** -1 **********\r\n");
-			if (c == 0)
-				echo("****************RECIEVED ZERO****************\r\n");
-				*/
-			buf += (char)c; //stream.read();
+			if (c != 0 && c != -1)
+				buf += (char)c;
 		}
 		else {
 			if (buf.indexOf(aresp) > -1) {
+				echo("RESPONSE: ");
+				echo(buf);
+				return true;
+			}
+			delay(10);
+		}
+	}
+
+	echo("Failed, buf: ");
+	echo(buf);
+
+	return false;
+
+}
+
+static bool AT(
+		String& command,
+		const char* resp,
+		Stream& stream,
+		unsigned long timeout = GPRS_WAIT)
+{
+	command += "\r";
+	stream.print(command);
+
+	echo("SENT TO SHIELD: ");
+	echo(command);
+	echo("WAITING FOR: ");
+	echo(resp);
+
+	String buf = "";
+	String aresp = resp;
+
+	unsigned long timer = millis();
+	while (millis() - timer < timeout) {
+		if (stream.available()) {
+			timer = millis();
+			int c = stream.read();
+			if (c != 0 && c != -1)
+				buf += (char)c;
+		}
+		else {
+			if (buf.indexOf(aresp) > -1) {
+				echo("RESPONSE: ");
 				echo(buf);
 				return true;
 			}
@@ -113,6 +153,16 @@ static bool waitResp(unsigned long time, const char* req, Stream& stream)
 	return false;
 }
 
+static inline void drainBuffer(Stream& serial)
+{
+	unsigned long timestamp = millis();
+	while (millis() - timestamp < SERIAL_CLEAR) {
+		if (serial.available() > 0) {
+			timestamp = millis();
+			serial.read();
+		}
+	}
+}
 /****************************** MODEM STARTS HERE ******************************/
 
 // Modem module init.
@@ -122,167 +172,180 @@ bool GprsModem::begin()
 	coldReboot();
 
 	// Checking rate
-	int32_t rate = _checkRate();
+	//int32_t rate = _checkRate();
 
-	// if checking rate was unsuccessful
-	if (rate == -1)
-		// No point to do anything else
-		return false;
-	else {
-		// Changing BAUD if necessary for HardwareSerial
-		if (_serial && (rate != H_SPEED)) {
-			_serial->print((String)GPRS_IPR + H_SPEED);
-			_serial->print('\r');
-			waitResp(GPRS_WAIT, GPRS_OK, *_serial);
-			_serial->end();
-			delay(INIT_DLY);
-			_serial->begin(H_SPEED);
-		}
-		// Changing BAUD if necessary for SoftwareSerial
-		else if (_s_serial && (rate != S_SPEED)) {
-			_s_serial->print((String)GPRS_IPR + S_SPEED);
-			_s_serial->print('\r');
-			waitResp(GPRS_WAIT, GPRS_OK, *_s_serial);
-			_s_serial->end();
-			delay(INIT_DLY);
-			_s_serial->begin(S_SPEED);
+	// init serial
+	if (_h_serial) {
+		_h_serial->end();
+		delay(INIT_DLY);
+		_h_serial->begin(115200);
+		while(!(*_h_serial));
+	}
+	else if (_s_serial) {
+		_s_serial->end();
+		delay(INIT_DLY);
+		_s_serial->begin(115200);
+	}
+
+	delay(INIT_DLY);
+
+	// Changing module speed for SoftwareSerial
+	if (_s_serial) {
+		String req = (String) GPRS_IPR + S_SPEED;
+		AT(req, GPRS_STR_OK, _serial, SPEED_CHANGE_WAIT);
+		_s_serial->end();
+		delay(INIT_DLY);
+		_s_serial->begin(S_SPEED);
+		delay(INIT_DLY);
+	}
+
+	// checking if module responds...
+	for (int i = 0; i < NUM_TRIES; i++) {
+		String command = GPRS_AT;
+		if (AT(command, GPRS_STR_OK, _serial)) {
+			_speed = true;
+			echo("HOORAY!");
+			break;
 		}
 	}
+
+	drainBuffer(_serial);
+
+	// getting status
+	switch (status()) {
+		default: break;
+		case GPRS_SIM_NO:
+			return false;
+		case GPRS_SIM_FAULT:
+			return false;
+		case GPRS_SIM_ERR:
+			return false;
+		case GPRS_REG_FAULT:
+			return false;
+		case GPRS_UNAVAILABLE:
+			return false;
+		case GPRS_UNKNOWN:
+			return false;
+		case GPRS_SLEEP:
+			return false;
+	}
+
+	// sending configs
+	String buf;
+	AT(F("AT+CSCS=\"HEX\""), buf, _serial);
+	echo(buf);
+	AT(F("AT+CPMS=\"SM\",\"SM\",\"SM\""), buf, _serial);
+	echo(buf);
+	AT(F("ATE0"), buf, _serial);
+	echo(buf);
+	AT(F("ATV1"), buf, _serial);
+	echo(buf);
+	AT(F("AT+CMEE=1"), buf, _serial);
+	echo(buf);
+	AT(F("AT+CREG=0"), buf, _serial);
+	echo(buf);
+	AT(F("AT+CMGF=0"), buf, _serial);
+	echo(buf);
+	AT(F("AT+CNMI=1,0,0,0,0"), buf, _serial);
+	echo(buf);
+	AT(F("AT+CMGD=1,3"), buf, _serial, VERY_LONG_WAIT);
+	echo(buf);
+	AT(F("AT+CSCS=\"HEX\""), buf, _serial);
+	echo(buf);
+	AT(F("AT+CPMS=\"SM\",\"SM\",\"SM\""), buf, _serial);
+	echo(buf);
+
 	return true;
 }
 
-/*
- * Checking for current baud rate. Based on TinyGSM code
- * by Volodymyr Shymanskyy. Thank you, dude.
- */
-
-int32_t GprsModem::_checkRate()
-{
-	if (_serial) {
-		_serial->end();
-		delay(100);
-		_serial->begin(115200);
-		while(!(*_serial));
-		unsigned long time = millis();
-		while(millis() - time < GPRS_WAIT) {
-			if (_serial->available())
-				_serial->read();
-		}
-		//waitResp(GPRS_WAIT*2, GPRS_READY, *_serial);
-	}
-	else {
-		_s_serial->end();
-		delay(100);
-		_s_serial->begin(115200);
-		while(!(*_s_serial));
-		unsigned long time = millis();
-		while(millis() - time < GPRS_WAIT) {
-			if (_s_serial->available())
-				_s_serial->read();
-		}
-		//waitResp(GPRS_WAIT*2, GPRS_READY, *_s_serial);
-	}
-
-	static const uint32_t rates[] = {
-		115200, 9600, 57600, 38400, 19200, 74400, 74880,
-		230400, 460800, 2400, 4800, 14400, 28800
-	};
-
-	size_t rate_size = sizeof(rates) / sizeof(rates[0]);
-
-	for (size_t i = 0; i < rate_size; i++) {
-		uint32_t rate = rates[i];
-		// if HardwareSerial
-		if (_serial) {
-			_serial->end();
-			_serial->begin(rate);
-			while(!_serial);
-		}
-		// if SoftwareSerial
-		else {
-			_s_serial->end();
-			_s_serial->begin(rate);
-			while(!_s_serial);
-		}
-
-		//delay(CH_RATE_DLY);
-
-		for (uint8_t j = 0; j < NUM_TRIES; j++) {
-
-			if (_serial) {
-				_serial->print(GPRS_AT);
-				_serial->print('\r');
-				//delay(CH_RATE_DLY);
-				if (waitResp(GPRS_WAIT, GPRS_OK, *_serial)) {
-					return rate;
-				}
-			}
-			else {
-				_s_serial->print(GPRS_AT);
-				_s_serial->print('\r');
-				//delay(CH_RATE_DLY);
-				if (waitResp(GPRS_WAIT, GPRS_OK, *_s_serial)) {
-					return rate;
-				}
-			}
-		}
-	}
-	return -1;
+uint8_t GprsModem::status() {
+        int i;
+	String buf;
+        if (!_speed) {
+                return GPRS_SPEED_ERR;
+        }
+        AT(F("AT+CPAS"), buf, _serial);
+        if (buf.indexOf(F("+CPAS:1")) > -1) {
+                return GPRS_UNAVAILABLE;
+        }
+        if (buf.indexOf(F("+CPAS:2")) > -1) {
+                return GPRS_UNKNOWN;
+        }
+        if (buf.indexOf(F("+CPAS:5")) > -1) {
+                return GPRS_SLEEP;
+        }
+        AT(F("AT+CPIN?"), buf, _serial);
+        if (buf.indexOf(F("+CPIN:SIM PIN")) > -1) {
+                return GPRS_SIM_PIN;
+        }
+        if (buf.indexOf(F("+CPIN:SIM PUK")) > -1) {
+                return GPRS_SIM_PUK;
+        }
+        if (buf.indexOf(F("+CPIN:SIM PIN2")) > -1) {
+                return GPRS_SIM_PIN2;
+        }
+        if (buf.indexOf(F("+CPIN:SIM PUK2")) > -1) {
+                return GPRS_SIM_PUK2;
+        }
+        if (buf.indexOf(F("+CME ERROR:10")) > -1) {
+                return GPRS_SIM_NO;
+        }
+        if (buf.indexOf(F("+CME ERROR:13")) > -1) {
+                return GPRS_SIM_FAULT;
+        }
+        if (buf.indexOf(F("+CPIN:READY")) < 0) {
+                return GPRS_SIM_ERR;
+        }
+        AT(F("AT+CREG?"), buf, _serial);
+        if (buf.indexOf(F("+CREG:")) < 0) {
+                return GPRS_REG_ERR;
+        }
+        i = buf.indexOf(F("+CREG:"));
+        i = buf.indexOf(F(","), i) + 1;
+        if (buf.charAt(i + 1) != 13) {
+                return GPRS_REG_NO;
+        }
+        if (buf.charAt(i) == '0') {
+                return GPRS_REG_NO;
+        }
+        if (buf.charAt(i) == '2') {
+                return GPRS_REG_NO;
+        }
+        if (buf.charAt(i) == '3') {
+                return GPRS_REG_FAULT;
+        }
+        if ((buf.charAt(i) != '1') &&
+                (buf.charAt(i) != '5')) {
+                return GPRS_REG_NO;
+        }
+        return GPRS_OK;
 }
+
 
 // Cold reboot thru power pin
 void GprsModem::coldReboot()
 {
-	echo(F("Reboot\n"));
+	echo(F("Reboot"));
 	pinMode(_pinPWR, OUTPUT);
 	digitalWrite(_pinPWR, HIGH);
 	delay(REBOOT_DLY);
 	digitalWrite(_pinPWR, LOW);
 	delay(REBOOT_DLY);
-	//delay(500);
 }
+
 
 uint8_t GprsModem::getSignalLevel()
 {
-	String resp = "";
-	if (_serial) {
-		_serial->print(GPRS_SIGNAL);
-		_serial->print('\r');
-		//delay(10);
-		if (waitResp(
-					GPRS_WAIT,
-					GPRS_SIGNAL_RESP,
-					resp,
-					*_serial
-					)
-				) {
-			int index = resp.indexOf(':');
-			index++;
-			resp = resp.substring(index, index + 3);
-			resp.trim();
-			return (uint8_t) resp.toInt();
-		}
+	String buf = "";
 
-	}
-	else {
-		_s_serial->print(GPRS_SIGNAL);
-		_s_serial->print('\r');
-		//delay(10);
-		if (waitResp(
-					GPRS_WAIT,
-					GPRS_SIGNAL_RESP,
-					resp,
-					*_s_serial
-					)
-				) {
-			int index = resp.indexOf(':');
-			index++;
-			resp = resp.substring(index, index + 3);
-			resp.trim();
-			return (uint8_t) resp.toInt();
-		}
-	}
-	return 0;
+	if (!AT(GPRS_SIGNAL, GPRS_SIGNAL_RESP, buf, _serial))
+		return 0;
+
+	int index = buf.indexOf(':');
+	index++;
+	buf = buf.substring(index, index+3);
+	buf.trim();
+	return (uint8_t) buf.toInt();
 }
 
 /****************************** MODEM ENDS HERE ******************************/
@@ -290,14 +353,14 @@ uint8_t GprsModem::getSignalLevel()
 // Enter IP mode and configure internet
 bool GprsClient::begin()
 {
-	//_serial.setTimeout(STREAM_TIMEOUT);
-
+	/*
 	_serial.print(F("AT+CGATT=1"));
 	_serial.print('\r');
 
 	if (!waitResp(GPRS_WAIT, "+CGATT:1", _serial)) {
 		return false;
 	}
+	*/
 
 	// Used to connect to Megafon. Works without it. Hadn't been checked
 	// with other operators.
@@ -309,11 +372,13 @@ bool GprsClient::begin()
 		return false;
 		*/
 
+	/*
 	_serial.print(F("AT+CGACT=1,1"));
 	_serial.print('\r');
 
-	if (!waitResp(GPRS_WAIT, GPRS_OK, _serial))
+	if (!waitResp(GPRS_WAIT, GPRS_STR_OK, _serial))
 		return false;
+		*/
 
 	// use this to enable sockets. Whole code should be rewritten
 	// if those are enabled.
@@ -334,27 +399,12 @@ int GprsClient::connect(const char* host, uint16_t port)
 		+ "\"" + _protocol + "\""
 		+ ",\"" + host + "\"," + port;
 
-	echo("SENT TO SHIELD: ");
-	echo(reqstr);
-	echo("\r\n");
-
-	_serial.print(reqstr);
-	_serial.print('\r');
-
-	//while(!_serial.available());
-
-	if (!waitResp(GPRS_WAIT, CONNECT_STATUS, _serial))
+	if (!AT(reqstr, CONNECT_STATUS, _serial, CONNECT_TIMEOUT))
 		return 0;
 
-	//reqstr = "AT+CIPTMODE=1";
 	reqstr = GPRS_CIPTMODE;
-	_serial.print(reqstr);
-	_serial.print('\r');
 
-	//while(!_serial.available());
-
-
-	if (waitResp(GPRS_WAIT, GPRS_OK, _serial))
+	if (AT(reqstr, GPRS_STR_OK, _serial))
 		return 1;
 
 	return 0;
@@ -367,25 +417,27 @@ int GprsClient::connect(const char* host, uint16_t port, const char* protocol)
 
 	String reqstr = (String)START + "\""+ _protocol + "\""+ ",\"" + host + "\"," + port;
 
+	/*
 	_serial.print(reqstr);
 	_serial.print('\r');
-
-	//while(!_serial.available()); // is it needed?
-
 
 	if (!waitResp(GPRS_WAIT, CONNECT_STATUS, _serial))
 		return 0;
+		*/
+	if (!AT(reqstr, CONNECT_STATUS, _serial))
+		return 0;
 
-	//reqstr = "AT+CIPTMODE=1";
 	reqstr = GPRS_CIPTMODE;
+	/*
 	_serial.print(reqstr);
 	_serial.print('\r');
 
-	//while(!_serial.available()); // is it needed?
-
-
-	if (waitResp(GPRS_WAIT, GPRS_OK, _serial))
+	if (waitResp(GPRS_WAIT, GPRS_STR_OK, _serial))
 		return 1;
+		*/
+	if (AT(reqstr, GPRS_STR_OK, _serial))
+		return 1;
+
 	return 0;
 }
 
@@ -407,6 +459,8 @@ int GprsClient::connect(IPAddress ip, uint16_t port)
 	}
 
 	String reqstr = (String)START + "\""+ _protocol + "\""+ ",\"" + addr + "\"," + port;
+
+	/*
 	_serial.print(reqstr);
 	_serial.print('\r');
 
@@ -414,17 +468,21 @@ int GprsClient::connect(IPAddress ip, uint16_t port)
 
 	if (!waitResp(GPRS_WAIT, CONNECT_STATUS, _serial))
 		return 0;
+		*/
+	if (!AT(reqstr, CONNECT_STATUS, _serial))
+		return 0;
 
-	//reqstr = "AT+CIPTMODE=1";
-	reqstr = GPRS_CIPTMODE;
+	reqstr = String(GPRS_CIPTMODE);
+	/*
 	_serial.print(reqstr);
 	_serial.print('\r');
 
-	while(!_serial.available());
-
-
-	if (waitResp(GPRS_WAIT, GPRS_OK, _serial))
+	if (waitResp(GPRS_WAIT, GPRS_STR_OK, _serial))
 		return 1;
+		*/
+	if (AT(reqstr, GPRS_STR_OK, _serial))
+		return 1;
+
 	return 0;
 }
 
@@ -452,10 +510,9 @@ int GprsClient::read(uint8_t* buf, size_t size)
 
 void GprsClient::stop()
 {
-	_serial.print(GPRS_CLOSE);
-	_serial.print('\r');
-	while (!_serial.available());
-	waitResp(GPRS_WAIT, GPRS_OK, _serial);
+	String req = GPRS_CLOSE;
+	AT(req, GPRS_STR_OK, _serial);
 }
 
 /**/
+
