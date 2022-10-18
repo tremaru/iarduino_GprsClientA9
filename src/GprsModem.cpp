@@ -171,9 +171,6 @@ bool GprsModem::begin()
 	// reboot module
 	coldReboot();
 
-	// Checking rate
-	//int32_t rate = _checkRate();
-
 	// init serial
 	if (_h_serial) {
 		_h_serial->end();
@@ -188,6 +185,8 @@ bool GprsModem::begin()
 	}
 
 	delay(INIT_DLY);
+
+	drainBuffer(_serial);
 
 	// Changing module speed for SoftwareSerial
 	if (_s_serial) {
