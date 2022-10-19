@@ -1,4 +1,5 @@
 // tabstop=8
+// uncomment for debug info
 //#define ECHO_ON
 #include "GprsModem.h"
 
@@ -175,13 +176,13 @@ bool GprsModem::begin()
 	if (_h_serial) {
 		_h_serial->end();
 		delay(INIT_DLY);
-		_h_serial->begin(115200);
+		_h_serial->begin(H_SPEED);
 		while(!(*_h_serial));
 	}
 	else if (_s_serial) {
 		_s_serial->end();
 		delay(INIT_DLY);
-		_s_serial->begin(115200);
+		_s_serial->begin(H_SPEED);
 	}
 
 	delay(INIT_DLY);
@@ -211,7 +212,7 @@ bool GprsModem::begin()
 	drainBuffer(_serial);
 
 	// getting status
-	switch (status()) {
+	switch (_status = updateStatus()) {
 		default: break;
 		case GPRS_SIM_NO:
 			return false;
@@ -257,7 +258,7 @@ bool GprsModem::begin()
 	return true;
 }
 
-uint8_t GprsModem::status() {
+uint8_t GprsModem::updateStatus() {
         int i;
 	String buf;
         if (!_speed) {

@@ -38,7 +38,8 @@ enum {
 	GPRS_SIM_ERR	,
 	GPRS_REG_NO	,
 	GPRS_REG_FAULT	,
-	GPRS_REG_ERR
+	GPRS_REG_ERR	,
+	GPRS_NO_INIT
 };
 
 // modem class, for hardware initialization.
@@ -58,7 +59,12 @@ class GprsModem {
 		bool begin();
 		void coldReboot();
 		uint8_t getSignalLevel();
-		uint8_t status();
+		uint8_t updateStatus();
+		uint8_t status()
+		{
+			return _status;
+		}
+
 	private:
 		int32_t _checkRate();
 
@@ -71,6 +77,7 @@ class GprsModem {
 		// more generic
 		Stream& _serial;
 		bool _speed = false;
+		int _status = GPRS_NO_INIT;
 };
 
 // client class. Should work with everithing that Arduino client does

@@ -27,11 +27,13 @@ void setup()
 	while(!Serial);
 
 	// Инициируем модем
-	Serial.println("Ждём инициализации Shield'а");
-	if (!myModem.begin()) {
-		Serial.println("GSM Shield не найден.");
-		while(1);
+	Serial.println("Ждём инициализации Shield'а..");
+	while (myModem.status() != GPRS_OK) {
+		Serial.print(".");
+		myModem.begin();
 	}
+	Serial.println();
+	Serial.println("Готово!");
 
 	// Инициируем объект клиента
 	myClient.begin();
@@ -40,7 +42,7 @@ void setup()
 	Serial.println("Ждём подключения к удалённому узлу");
 	if (!myClient.connect(host, port)) {
 		Serial.println("Не удалось подключиться к удалённому узлу");
-		while(1);
+		return;
 	}
 
 	// Делаем запрос на сервер.

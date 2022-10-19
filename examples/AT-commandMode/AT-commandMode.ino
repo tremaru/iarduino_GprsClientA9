@@ -29,11 +29,15 @@ void setup()
 	while(!Serial);
 
 	// Инициируем модем
-	Serial.println("Ждём инициализации Shield'а");
-	if (!myModem.begin()) {
-		Serial.println("GSM Shield не найден.");
-		while(1);
+	Serial.println("Ждём инициализации Shield'а..");
+
+	while (myModem.status() != GPRS_OK) {
+		Serial.print(".");
+		myModem.begin();
 	}
+
+	Serial.println();
+	Serial.println("Готово, используйте поле ввода для команд");
 }
 
 void loop()
