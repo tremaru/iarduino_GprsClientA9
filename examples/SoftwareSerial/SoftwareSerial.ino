@@ -1,5 +1,6 @@
 // Скетч-пример работы с модулем при помощи программного последовательного порта
 
+// #define ECHO_ON // раскомментируйте для вывода всех AT запросов и ответов в монитор последовательного порта
 // Подключаем бибилиотеки
 #include <GprsModem.h>
 #include <SoftwareSerial.h>
@@ -42,14 +43,14 @@ void setup()
 	Serial.println("Ждём подключения к удалённому узлу");
 	if (!myClient.connect(host, port)) {
 		Serial.println("Не удалось подключиться к удалённому узлу");
-		return;
 	}
-
-	// Делаем запрос на сервер.
-	myClient.println((String)req);
-	myClient.println((String)"Host: " + host);
-	myClient.println(F("Connection: close"));
-	myClient.println();
+	else {
+		// Делаем запрос на сервер.
+		myClient.println((String)req);
+		myClient.println((String)"Host: " + host);
+		myClient.println(F("Connection: close"));
+		myClient.println();
+	}
 }
 
 void loop()

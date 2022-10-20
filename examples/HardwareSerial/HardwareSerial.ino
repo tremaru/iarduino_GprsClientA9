@@ -1,5 +1,6 @@
 // Скетч-пример работы с модулем при помощи аппаратного последовательного порта
 
+// #define ECHO_ON // раскомментируйте для вывода всех AT запросов и ответов в монитор последовательного порта
 // Подключаем библиотеку модуля A9 для работы с сетью Интернет
 #include <GprsModem.h>
 
@@ -45,14 +46,14 @@ void setup()
 	Serial.println("Ждём подключения к удалённому узлу");
 	if (!myClient.connect(host, port)) {
 		Serial.println("Не удалось подключится к удалённому узлу");
-		return;
 	}
-
-	// Делаем запрос на сервер.
-	myClient.println((String)req);
-	myClient.println((String)"Host: " + host);
-	myClient.println(F("Connection: close"));
-	myClient.println();
+	else {
+		// Делаем запрос на сервер.
+		myClient.println((String)req);
+		myClient.println((String)"Host: " + host);
+		myClient.println(F("Connection: close"));
+		myClient.println();
+	}
 }
 
 void loop()
