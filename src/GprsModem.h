@@ -152,7 +152,7 @@ const char* GPRS_CLOSE = "AT+CIPCLOSE";
 // IP mode?
 const char* GPRS_CIPTMODE = "AT+CIPTMODE=1";
 // Successful connection response
-const char* CONNECT_STATUS = "CONNECT OK";
+const char* CONNECT_STATUS = "CONNECT";
 // Ready after reboot
 const char* GPRS_READY = "READY";
 // Default delay for coldReboot() in ms
@@ -320,6 +320,20 @@ bool GprsModem::begin()
 		_s_serial->end();
 		delay(INIT_DLY);
 		_s_serial->begin(S_SPEED);
+		delay(INIT_DLY);
+	}
+
+	// Change to hi speed if for some reason module started in 9600
+	if (_h_serial) {
+		_h_serial->end();
+		delay(INIT_DLY);
+		_h_serial->begin(S_SPEED);
+		while(!(*_h_serial));
+		String req = (String) GPRS_IPR + H_SPEED;
+		AT(req, GPRS_STR_OK, _serial, SPEED_CHANGE_WAIT);
+		_h_serial->end();
+		delay(INIT_DLY);
+		_h_serial->begin(H_SPEED);
 		delay(INIT_DLY);
 	}
 
@@ -604,7 +618,5 @@ void GprsClient::stop()
 	//String req = GPRS_CLOSE;
 	//AT(req, GPRS_STR_OK, _serial, VERY_LONG_WAIT);
 }
-
-
 
 #endif // __GPRSMODEM_H__
