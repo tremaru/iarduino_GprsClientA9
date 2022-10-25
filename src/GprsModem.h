@@ -182,7 +182,7 @@ static void AT(
 		if (stream.available()) {
 			timer = millis();
 			int c = stream.read();
-			if (c != 0 && c != -1)
+			if (c > 0)
 				buf += (char)c;
 		}
 		else {
@@ -216,7 +216,7 @@ static bool AT(
 		if (stream.available()) {
 			timer = millis();
 			int c = stream.read();
-			if (c != 0 && c != -1)
+			if (c > 0)
 				buf += (char)c;
 		}
 		else {
@@ -258,7 +258,7 @@ static bool AT(
 		if (stream.available()) {
 			timer = millis();
 			int c = stream.read();
-			if (c != 0 && c != -1)
+			if (c > 0)
 				buf += (char)c;
 		}
 		else {
