@@ -2,8 +2,8 @@
 
 // #define ECHO_ON // раскомментируйте для вывода всех AT запросов и ответов в монитор последовательного порта
 // Подключаем бибилиотеки
+#include <SoftwareSerial.h> // Если используется библиотека <SoftwareSerial.h>, то она должна быть подключена до <GprsModem.h>
 #include <GprsModem.h>
-#include <SoftwareSerial.h>
 
 // Определяем выводы RX, TX
 #define RX 8

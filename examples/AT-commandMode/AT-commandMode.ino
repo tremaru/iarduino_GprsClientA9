@@ -4,8 +4,8 @@
 
 // #define ECHO_ON // раскомментируйте для вывода всех AT запросов и ответов в монитор последовательного порта
 // Подключаем бибилиотеки
+#include <SoftwareSerial.h> // Если используется библиотека <SoftwareSerial.h>, то она должна быть подключена до <GprsModem.h>
 #include <GprsModem.h>
-#include <SoftwareSerial.h>
 
 // Если модуль подлючён к Piranha ULTRA или Arduino MEGA
 // Раскомментируйте эту следующую строку и удалите указанные

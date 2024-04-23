@@ -13,7 +13,11 @@
 #include <Arduino.h>
 #include <Stream.h>
 #include <Client.h>
-#include <SoftwareSerial.h>
+
+#if defined(__SOFTWARE_SERIAL_H__) || defined(SoftwareSerial_h)
+	#include <SoftwareSerial.h>
+	#define incSWSerial
+#endif
 
 #include "IPAddress.h"
 
@@ -53,12 +57,13 @@ class GprsModem {
 			_h_serial(&serial),
 			_s_serial(nullptr),
        			_serial(serial)	{}
+		#ifdef incSWSerial
 		GprsModem(SoftwareSerial& serial, int pinPWR):
 			_pinPWR(pinPWR),
 			_h_serial(nullptr),
 			_s_serial(&serial),
        			_serial(serial)	{}
-
+		#endif
 		bool begin();
 		void coldReboot();
 		uint8_t getSignalLevel();
@@ -76,7 +81,11 @@ class GprsModem {
 		int _pinPWR;
 		// for begin only
 		HardwareSerial* _h_serial;
+		#ifdef incSWSerial
 		SoftwareSerial* _s_serial;
+		#else
+		HardwareSerial* _s_serial;
+		#endif
 		// more generic
 		Stream& _serial;
 		bool _speed = false;
@@ -89,8 +98,10 @@ class GprsClient: public Client {
 		GprsClient(HardwareSerial& serial): _serial(serial) {
 		}
 
+		#ifdef incSWSerial
 		GprsClient(SoftwareSerial& serial): _serial(serial) {
 		}
+		#endif
 
 		bool begin();
 		int connect(const char* host, uint16_t port, const char* protocol);
@@ -304,8 +315,10 @@ bool GprsModem::begin()
 		while(!(*_h_serial));
 	}
 	else if (_s_serial) {
+		#ifndef RENESAS_CORTEX_M4 // Библиотека SoftwareSerial для плат Arduino UNO R4 не имеет функции end(). По состоянию на март 2024г.
 		_s_serial->end();
 		delay(INIT_DLY);
+		#endif
 		_s_serial->begin(H_SPEED);
 	}
 
@@ -317,8 +330,10 @@ bool GprsModem::begin()
 	if (_s_serial) {
 		String req = (String) GPRS_IPR + S_SPEED;
 		AT(req, GPRS_STR_OK, _serial, SPEED_CHANGE_WAIT);
+		#ifndef RENESAS_CORTEX_M4 // Библиотека SoftwareSerial для плат Arduino UNO R4 не имеет функции end(). По состоянию на март 2024г.
 		_s_serial->end();
 		delay(INIT_DLY);
+		#endif
 		_s_serial->begin(S_SPEED);
 		delay(INIT_DLY);
 	}
