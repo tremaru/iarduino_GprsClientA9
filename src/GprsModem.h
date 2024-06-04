@@ -1,3 +1,5 @@
+// author Andy Trosin
+
 #ifndef __GPRSMODEM_H__
 #define __GPRSMODEM_H__
 #include <Arduino.h>
